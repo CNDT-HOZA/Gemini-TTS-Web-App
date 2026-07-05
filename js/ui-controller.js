@@ -38,7 +38,13 @@ window.UIController = {
       'gdoc-url-input', 'gdoc-fetch-btn', 'gdoc-status',
       'voice-grid', 'style-input', 'speed-select', 'volume-slider',
       'volume-value', 'default-format-select', 'delay-input',
-      'save-settings-btn', 'toast-container'
+      'apps-script-url', 'polling-interval',
+      'save-settings-btn', 'toast-container',
+      'tab-manual-btn', 'tab-batch-btn', 'manual-panel', 'batch-panel',
+      'batch-start-btn', 'batch-stop-btn', 'batch-refresh-btn',
+      'batch-polling-status', 'batch-status-text',
+      'batch-table-body', 'batch-progress', 'batch-progress-bar',
+      'batch-progress-label', 'batch-progress-detail'
     ];
 
     ids.forEach((id) => {
@@ -432,7 +438,9 @@ window.UIController = {
       speed:   (this._elements.speedSelect  && this._elements.speedSelect.value)         || '1',
       volume:  this._elements.volumeSlider  ? parseFloat(this._elements.volumeSlider.value) : 1,
       format:  (this._elements.defaultFormatSelect && this._elements.defaultFormatSelect.value) || 'wav',
-      delay:   this._elements.delayInput    ? parseInt(this._elements.delayInput.value, 10) || 0 : 0
+      delay:   this._elements.delayInput    ? parseInt(this._elements.delayInput.value, 10) || 0 : 0,
+      appsScriptUrl: (this._elements.appsScriptUrl && this._elements.appsScriptUrl.value.trim()) || '',
+      pollingInterval: this._elements.pollingInterval ? parseInt(this._elements.pollingInterval.value, 10) || 20 : 20
     };
   },
 
@@ -468,6 +476,12 @@ window.UIController = {
     }
     if (this._elements.delayInput && settings.delay != null) {
       this._elements.delayInput.value = settings.delay;
+    }
+    if (this._elements.appsScriptUrl && settings.appsScriptUrl != null) {
+      this._elements.appsScriptUrl.value = settings.appsScriptUrl;
+    }
+    if (this._elements.pollingInterval && settings.pollingInterval != null) {
+      this._elements.pollingInterval.value = settings.pollingInterval;
     }
 
     // Set active voice button

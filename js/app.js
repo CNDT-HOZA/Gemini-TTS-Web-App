@@ -79,6 +79,35 @@ window.App = {
       });
     }
 
+    // ── Tab Switching ────────────────────────────────────────────
+    if (el.tabManualBtn) {
+      el.tabManualBtn.addEventListener('click', function () {
+        self._switchTab('manual');
+      });
+    }
+    if (el.tabBatchBtn) {
+      el.tabBatchBtn.addEventListener('click', function () {
+        self._switchTab('batch');
+      });
+    }
+
+    // ── Batch Controls ──────────────────────────────────────────
+    if (el.batchStartBtn) {
+      el.batchStartBtn.addEventListener('click', function () {
+        self._startBatchPolling();
+      });
+    }
+    if (el.batchStopBtn) {
+      el.batchStopBtn.addEventListener('click', function () {
+        self._stopBatchPolling();
+      });
+    }
+    if (el.batchRefreshBtn) {
+      el.batchRefreshBtn.addEventListener('click', function () {
+        self._refreshBatchTable();
+      });
+    }
+
     // ── Text Input ───────────────────────────────────────────────
     if (el.textInput) {
       el.textInput.addEventListener('input', function () {
@@ -748,6 +777,225 @@ window.App = {
   _applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem(this.THEME_KEY, theme);
+  },
+
+  // ─── Tab Switching ────────────────────────────────────────────────
+
+  /**
+   * Switch between 'manual' and 'batch' tabs.
+   * @param {string} tab - 'manual' or 'batch'
+   */
+  _switchTab(tab) {
+    var el = UIController._elements;
+
+    // Update tab buttons
+    if (el.tabManualBtn) {
+      el.tabManualBtn.classList.toggle('active', tab === 'manual');
+    }
+    if (el.tabBatchBtn) {
+      el.tabBatchBtn.classList.toggle('active', tab === 'batch');
+    }
+
+    // Show/hide panels
+    if (el.manualPanel) {
+      el.manualPanel.classList.toggle('hidden', tab !== 'manual');
+    }
+    if (el.batchPanel) {
+      el.batchPanel.classList.toggle('hidden', tab !== 'batch');
+    }
+  },
+
+  // ─── Batch Automation ─────────────────────────────────────────────
+
+  /**
+   * Refresh the batch table from Google Sheet.
+   */
+  async _refreshBatchTable(silent) {
+    var el = UIController._elements;
+    if (!el.batchTableBody) return;
+
+    var url = SettingsManager.get('appsScriptUrl');
+    if (!url) {
+      if (!silent) UIController.showToast('Vui lòng nhập URL Apps Script trong Cài đặt', 'warning');
+      return;
+    }
+
+    // Only show loading on first load (when table is empty or has placeholder)
+    var isFirstLoad = el.batchTableBody.querySelectorAll('tr[data-row]').length === 0;
+    if (isFirstLoad) {
+      el.batchTableBody.innerHTML = '<tr><td colspan="5" class="batch-empty">Đang tải...</td></tr>';
+    }
+
+    try {
+      var rows = await SheetManager.fetchAllJobs();
+      this._renderBatchTable(rows);
+      if (!silent) UIController.showToast('Đã tải ' + rows.length + ' dòng từ Sheet', 'success', 2000);
+    } catch (err) {
+      // Only overwrite table on error if it was a manual refresh
+      if (!silent) {
+        el.batchTableBody.innerHTML = '<tr><td colspan="5" class="batch-empty">Lỗi: ' + err.message + '</td></tr>';
+        UIController.showToast('Lỗi tải Sheet: ' + err.message, 'error');
+      }
+    }
+  },
+
+  /**
+   * Render rows into the batch table.
+   * @param {Array} rows
+   */
+  _renderBatchTable(rows) {
+    var el = UIController._elements;
+    if (!el.batchTableBody) return;
+
+    if (!rows || rows.length === 0) {
+      el.batchTableBody.innerHTML = '<tr><td colspan="5" class="batch-empty">Không có dữ liệu</td></tr>';
+      return;
+    }
+
+    var html = '';
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      var statusClass = this._getStatusClass(r.status);
+      html += '<tr data-row="' + r.row + '">' +
+        '<td>' + r.row + '</td>' +
+        '<td>' + this._getStatusBadgeHtml(r.status, statusClass) + '</td>' +
+        '<td>' + (r.voice || '-') + '</td>' +
+        '<td>' + (r.speed || '-') + '</td>' +
+        '<td>' + (r.note || '-') + '</td>' +
+        '</tr>';
+    }
+    el.batchTableBody.innerHTML = html;
+  },
+
+  /**
+   * Get CSS class suffix for a status value.
+   */
+  _getStatusClass(status) {
+    if (!status) return 'pending';
+    var s = status.toString().trim().toLowerCase();
+    if (s === 'run') return 'run';
+    if (s === 'đang chạy') return 'processing';
+    if (s === 'đã xong') return 'done';
+    if (s === 'lỗi') return 'error';
+    return 'pending';
+  },
+
+  /**
+   * Generate HTML for a status badge.
+   */
+  _getStatusBadgeHtml(status, cls) {
+    var label = status || 'Chờ';
+    return '<span class="batch-status-badge status-' + cls + '">' +
+      '<span class="batch-status-dot"></span>' + label + '</span>';
+  },
+
+  /**
+   * Start batch polling.
+   */
+  _startBatchPolling() {
+    var url = SettingsManager.get('appsScriptUrl');
+    if (!url) {
+      UIController.showToast('Vui lòng nhập URL Apps Script trong Cài đặt', 'warning');
+      return;
+    }
+
+    var interval = (SettingsManager.get('pollingInterval') || 20) * 1000;
+    var self = this;
+
+    // Set up status callback
+    BatchProcessor.setStatusCallback(function (state) {
+      self._onBatchStatusChange(state);
+    });
+
+    BatchProcessor.startPolling(interval);
+
+    // Update button states
+    var el = UIController._elements;
+    if (el.batchStartBtn) el.batchStartBtn.disabled = true;
+    if (el.batchStopBtn) el.batchStopBtn.disabled = false;
+
+    UIController.showToast('Bắt đầu quét Sheet tự động', 'success', 2000);
+
+    // Also load the table immediately
+    this._refreshBatchTable();
+  },
+
+  /**
+   * Stop batch polling.
+   */
+  _stopBatchPolling() {
+    BatchProcessor.stopPolling();
+
+    var el = UIController._elements;
+    if (el.batchStartBtn) el.batchStartBtn.disabled = false;
+    if (el.batchStopBtn) el.batchStopBtn.disabled = true;
+
+    // Reset polling indicator
+    if (el.batchPollingStatus) {
+      el.batchPollingStatus.className = 'polling-indicator';
+    }
+    if (el.batchStatusText) {
+      el.batchStatusText.textContent = 'Đã dừng';
+    }
+    if (el.batchProgress) {
+      el.batchProgress.classList.add('hidden');
+    }
+
+    UIController.showToast('Đã dừng quét', 'info', 2000);
+  },
+
+  /**
+   * Callback when batch status changes.
+   * @param {Object} state - {isPolling, isProcessing, currentJob, lastCheck, error}
+   */
+  _onBatchStatusChange(state) {
+    var el = UIController._elements;
+
+    // Update polling indicator
+    if (el.batchPollingStatus) {
+      if (state.isProcessing) {
+        el.batchPollingStatus.className = 'polling-indicator polling-processing';
+      } else if (state.isPolling) {
+        el.batchPollingStatus.className = 'polling-indicator polling-active';
+      } else {
+        el.batchPollingStatus.className = 'polling-indicator';
+      }
+    }
+
+    // Update status text
+    if (el.batchStatusText) {
+      if (state.isProcessing && state.currentJob) {
+        el.batchStatusText.textContent = 'Đang xử lý dòng ' + state.currentJob.row +
+          (state.currentJob.note ? ' - ' + state.currentJob.note : '');
+      } else if (state.isPolling) {
+        var timeStr = state.lastCheck
+          ? new Date(state.lastCheck).toLocaleTimeString('vi-VN')
+          : '--:--';
+        el.batchStatusText.textContent = 'Đang quét • Lần cuối: ' + timeStr;
+      } else {
+        el.batchStatusText.textContent = 'Đã dừng';
+      }
+    }
+
+    // Show/hide progress
+    if (el.batchProgress) {
+      el.batchProgress.classList.toggle('hidden', !state.isProcessing);
+    }
+
+    if (state.isProcessing && state.currentJob && el.batchProgressLabel) {
+      el.batchProgressLabel.textContent = 'Đang xử lý: ' +
+        (state.currentJob.note || 'Dòng ' + state.currentJob.row);
+    }
+
+    // Handle errors
+    if (state.error) {
+      UIController.showToast(state.error, 'error');
+    }
+
+    // If a job just completed, refresh the table silently
+    if (!state.isProcessing && state.lastCheck) {
+      this._refreshBatchTable(true);
+    }
   },
 
   // ─── Settings Persistence ─────────────────────────────────────────

@@ -82,8 +82,73 @@
     </div>
   </header>
 
+  <!-- TAB SWITCHER -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="manual" id="tab-manual-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Nhập thủ công
+    </button>
+    <button class="tab-btn" data-tab="batch" id="tab-batch-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Batch từ Sheet
+    </button>
+  </div>
+
+  <!-- BATCH PANEL -->
+  <section id="batch-panel" class="batch-panel hidden">
+    <div class="batch-controls">
+      <div class="batch-controls-left">
+        <button id="batch-start-btn" class="btn btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Bắt đầu quét
+        </button>
+        <button id="batch-stop-btn" class="btn btn-secondary" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+          Dừng
+        </button>
+        <button id="batch-refresh-btn" class="btn btn-secondary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+          Tải lại
+        </button>
+      </div>
+      <div class="batch-status">
+        <span id="batch-polling-status" class="polling-indicator">
+          <span class="polling-dot"></span>
+          <span id="batch-status-text">Chưa bắt đầu</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="batch-table-wrapper">
+      <table id="batch-table" class="batch-table">
+        <thead>
+          <tr>
+            <th>STT</th>
+            <th>Trạng thái</th>
+            <th>Voice</th>
+            <th>Speed</th>
+            <th>Chú thích</th>
+          </tr>
+        </thead>
+        <tbody id="batch-table-body">
+          <tr><td colspan="5" class="batch-empty">Nhấn "Tải lại" hoặc "Bắt đầu quét" để tải danh sách từ Sheet</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="batch-progress" class="batch-progress hidden">
+      <div class="batch-progress-header">
+        <span id="batch-progress-label">Đang xử lý...</span>
+        <span id="batch-progress-detail"></span>
+      </div>
+      <div class="progress-bar-track">
+        <div id="batch-progress-bar" class="progress-bar-fill" style="width:0%"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- MAIN CONTENT -->
-  <main class="main-content">
+  <main id="manual-panel" class="main-content">
 
     <!-- LEFT COLUMN: INPUT -->
     <section id="input-panel" class="panel">
@@ -372,6 +437,28 @@
             <span class="suffix">ms</span>
           </div>
         </div>
+
+        <!-- BATCH SETTINGS SECTION -->
+        <div class="setting-divider"></div>
+        <h3 class="settings-section-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Batch từ Sheet
+        </h3>
+
+        <div class="setting-group">
+          <label for="apps-script-url">URL Apps Script</label>
+          <p class="setting-desc">URL triển khai Google Apps Script Web App để kết nối Google Sheet</p>
+          <input id="apps-script-url" type="text" placeholder="https://script.google.com/macros/s/.../exec">
+        </div>
+
+        <div class="setting-group">
+          <label for="polling-interval">Khoảng thời gian quét</label>
+          <p class="setting-desc">Tần suất kiểm tra Sheet tìm công việc mới</p>
+          <div class="input-with-suffix">
+            <input id="polling-interval" type="number" min="5" max="120" value="20" step="5">
+            <span class="suffix">giây</span>
+          </div>
+        </div>
       </div>
 
       <div class="modal-footer">
@@ -387,10 +474,13 @@
 
 <!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="js/settings.js"></script>
 <script src="js/text-parser.js"></script>
 <script src="js/tts-engine.js"></script>
 <script src="js/audio-manager.js"></script>
+<script src="js/sheet-manager.js"></script>
+<script src="js/batch-processor.js"></script>
 <script src="js/ui-controller.js"></script>
 <script src="js/app.js"></script>
 

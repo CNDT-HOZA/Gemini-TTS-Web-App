@@ -15,7 +15,9 @@ window.SettingsManager = {
     speed: 'normal',
     volume: 80,
     format: 'wav',
-    delay: 500
+    delay: 500,
+    appsScriptUrl: '',
+    pollingInterval: 20
   },
 
   /**

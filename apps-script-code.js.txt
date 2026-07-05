@@ -1,0 +1,101 @@
+/*
+ * Google Apps Script — Gemini TTS Web App
+ * 
+ * HƯỚNG DẪN CÀI ĐẶT:
+ * 1. Mở Google Sheet → Tiện ích mở rộng → Apps Script
+ * 2. Xóa hết code mặc định, dán toàn bộ code này vào
+ * 3. Nhấn lưu (Ctrl+S)
+ * 4. Triển khai → Triển khai mới
+ *    - Loại: Web App
+ *    - Thực thi dưới tư cách: Tôi
+ *    - Quyền truy cập: Bất kỳ ai
+ * 5. Nhấn "Triển khai" → Copy URL
+ * 6. Dán URL vào Cài đặt ứng dụng → mục "URL Apps Script"
+ *
+ * LƯU Ý: Tên sheet tab phải là "Gemini_TTS"
+ * Cấu trúc: Trạng Thái | Voice | Speed | Link Doc | Chú Thích
+ */
+
+var SHEET_NAME = 'Gemini_TTS';
+
+function doGet(e) {
+  var action = e.parameter.action;
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEET_NAME);
+  
+  if (!sheet) {
+    return jsonResponse({ error: 'Sheet not found', sheet: SHEET_NAME });
+  }
+
+  if (action === 'get_pending') {
+    // Lấy tất cả dòng có trạng thái "run"
+    return getPendingRows(sheet);
+  }
+  
+  if (action === 'update_status') {
+    var row = parseInt(e.parameter.row);
+    var status = e.parameter.status;
+    return updateStatus(sheet, row, status);
+  }
+  
+  if (action === 'get_all') {
+    return getAllRows(sheet);
+  }
+  
+  return jsonResponse({ error: 'Unknown action' });
+}
+
+function getPendingRows(sheet) {
+  var data = sheet.getDataRange().getValues();
+  var pending = [];
+  
+  for (var i = 1; i < data.length; i++) { // Bỏ dòng header
+    if (data[i][0] && data[i][0].toString().trim().toLowerCase() === 'run') {
+      pending.push({
+        row: i + 1, // Số dòng thực trong sheet (1-indexed)
+        stt: i,     // STT (bỏ header)
+        status: data[i][0],
+        voice: data[i][1] || '',
+        speed: data[i][2] || '',
+        linkDoc: data[i][3] || '',
+        note: data[i][4] || ''
+      });
+    }
+  }
+  
+  return jsonResponse({ success: true, pending: pending, total: data.length - 1 });
+}
+
+function getAllRows(sheet) {
+  var data = sheet.getDataRange().getValues();
+  var rows = [];
+  
+  for (var i = 1; i < data.length; i++) {
+    rows.push({
+      row: i + 1,
+      stt: i,
+      status: data[i][0] || '',
+      voice: data[i][1] || '',
+      speed: data[i][2] || '',
+      linkDoc: data[i][3] || '',
+      note: data[i][4] || ''
+    });
+  }
+  
+  return jsonResponse({ success: true, rows: rows });
+}
+
+function updateStatus(sheet, row, status) {
+  if (!row || !status) {
+    return jsonResponse({ error: 'Missing row or status' });
+  }
+  sheet.getRange(row, 1).setValue(status);
+  SpreadsheetApp.flush();
+  return jsonResponse({ success: true, row: row, status: status });
+}
+
+function jsonResponse(data) {
+  return ContentService
+    .createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}
