@@ -11,6 +11,7 @@
     _lastCheck: null,
     _currentJob: null,
     _lastError: null,
+    _dirHandle: null,     // File System Access API directory handle
 
     /* ───────── public api ───────── */
 
@@ -138,26 +139,30 @@
           }
         }
 
-        /* (h) create ZIP */
-        var zip = new window.JSZip();
-        var folderName = self._sanitizeFolderName(job.stt, job.note);
-        var folder = zip.folder(folderName);
-
-        for (var j = 0; j < wavBlobs.length; j++) {
-          var padded = self._padNumber(j + 1, 3);
-          folder.file(padded + ".wav", wavBlobs[j]);
-        }
+        /* (h) save output */
+        var folderName = self._sanitizeFolderName(job.row, job.note);
 
         /* merged full.wav – concatenate raw PCM base64 strings */
         var mergedBase64 = allBase64Pcm.join("");
         var fullWavBlob = window.AudioManager.createWavBlob(mergedBase64);
-        folder.file("full.wav", fullWavBlob);
 
-        /* (i) generate ZIP blob */
-        var zipBlob = await zip.generateAsync({ type: "blob" });
+        if (self._dirHandle) {
+          /* ── File System Access API: save directly ── */
+          await self._saveToFileSystem(self._dirHandle, folderName, wavBlobs, fullWavBlob);
+        } else {
+          /* ── Fallback: ZIP download ── */
+          var zip = new window.JSZip();
+          var folder = zip.folder(folderName);
 
-        /* (j) trigger download */
-        self._triggerDownload(zipBlob, folderName + ".zip");
+          for (var j = 0; j < wavBlobs.length; j++) {
+            var padded = self._padNumber(j + 1, 3);
+            folder.file(padded + ".wav", wavBlobs[j]);
+          }
+          folder.file("full.wav", fullWavBlob);
+
+          var zipBlob = await zip.generateAsync({ type: "blob" });
+          self._triggerDownload(zipBlob, folderName + ".zip");
+        }
 
         /* (k) mark as done */
         await window.SheetManager.updateJobStatus(job.row, "Đã Xong");
@@ -193,6 +198,34 @@
         .replace(/_{2,}/g, "_")
         .replace(/^_|_$/g, "");
       return sanitized || "batch";
+    },
+
+    /**
+     * Save WAV files directly to filesystem via File System Access API.
+     */
+    _saveToFileSystem: async function (dirHandle, folderName, wavBlobs, fullWavBlob) {
+      // Create subdirectory
+      var subDir = await dirHandle.getDirectoryHandle(folderName, { create: true });
+
+      // Write individual segment files
+      for (var i = 0; i < wavBlobs.length; i++) {
+        var fileName = this._padNumber(i + 1, 3) + ".wav";
+        var fileHandle = await subDir.getFileHandle(fileName, { create: true });
+        var writable = await fileHandle.createWritable();
+        await writable.write(wavBlobs[i]);
+        await writable.close();
+      }
+
+      // Write merged full.wav
+      var fullHandle = await subDir.getFileHandle("full.wav", { create: true });
+      var fullWritable = await fullHandle.createWritable();
+      await fullWritable.write(fullWavBlob);
+      await fullWritable.close();
+
+      window.UIController.showToast(
+        "Đã lưu " + wavBlobs.length + " file vào " + folderName,
+        "success", 3000
+      );
     },
 
     _triggerDownload: function (blob, filename) {

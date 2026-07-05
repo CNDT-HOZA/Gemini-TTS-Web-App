@@ -13,6 +13,7 @@ window.App = {
   _segments: [],        // Current parsed segments [{id, text}, …]
   _results: {},         // Conversion results: { segmentId: base64Pcm }
   _isConverting: false,
+  _dirHandle: null,     // File System Access API directory handle
 
   // ─── Initialization ───────────────────────────────────────────────
 
@@ -105,6 +106,11 @@ window.App = {
     if (el.batchRefreshBtn) {
       el.batchRefreshBtn.addEventListener('click', function () {
         self._refreshBatchTable();
+      });
+    }
+    if (el.batchFolderBtn) {
+      el.batchFolderBtn.addEventListener('click', function () {
+        self._pickSaveFolder();
       });
     }
 
@@ -802,6 +808,49 @@ window.App = {
     }
     if (el.batchPanel) {
       el.batchPanel.classList.toggle('hidden', tab !== 'batch');
+    }
+  },
+
+  // ─── File System Access ───────────────────────────────────────────
+
+  /**
+   * Check if File System Access API is supported.
+   */
+  _supportsFileSystem() {
+    return typeof window.showDirectoryPicker === 'function';
+  },
+
+  /**
+   * Open folder picker and store the directory handle.
+   */
+  async _pickSaveFolder() {
+    if (!this._supportsFileSystem()) {
+      UIController.showToast(
+        'Trình duyệt không hỗ trợ lưu trực tiếp. Sẽ tải xuống ZIP thay thế.',
+        'warning', 4000
+      );
+      return;
+    }
+
+    try {
+      this._dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      var el = UIController._elements;
+      if (el.batchFolderName) {
+        el.batchFolderName.textContent = '📁 ' + this._dirHandle.name;
+      }
+      if (el.batchFolderBtn) {
+        el.batchFolderBtn.classList.add('folder-selected');
+      }
+      // Pass handle to BatchProcessor
+      BatchProcessor._dirHandle = this._dirHandle;
+      UIController.showToast(
+        'Đã chọn: ' + this._dirHandle.name + ' — file sẽ lưu trực tiếp',
+        'success', 3000
+      );
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        UIController.showToast('Lỗi chọn thư mục: ' + err.message, 'error');
+      }
     }
   },
 

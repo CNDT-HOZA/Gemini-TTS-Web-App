@@ -42,6 +42,7 @@ window.UIController = {
       'save-settings-btn', 'toast-container',
       'tab-manual-btn', 'tab-batch-btn', 'manual-panel', 'batch-panel',
       'batch-start-btn', 'batch-stop-btn', 'batch-refresh-btn',
+      'batch-folder-btn', 'batch-folder-name',
       'batch-polling-status', 'batch-status-text',
       'batch-table-body', 'batch-progress', 'batch-progress-bar',
       'batch-progress-label', 'batch-progress-detail'

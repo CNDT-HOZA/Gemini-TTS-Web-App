@@ -1854,3 +1854,31 @@ button:focus-visible,
   background: var(--accent-subtle);
   border-left: 3px solid var(--accent-primary);
 }
+
+/* Folder picker button */
+#batch-folder-btn {
+  max-width: 220px;
+  overflow: hidden;
+}
+
+#batch-folder-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#batch-folder-btn.folder-selected {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+/* Responsive batch controls */
+@media (max-width: 768px) {
+  .batch-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .batch-controls-left {
+    flex-wrap: wrap;
+  }
+}
