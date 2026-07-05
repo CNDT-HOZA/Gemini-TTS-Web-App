@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gemini Voice Studio — Chuyển văn bản thành giọng nói</title>
+  <meta name="description" content="Ứng dụng chuyển đổi văn bản thành giọng nói chất lượng cao sử dụng công nghệ AI Gemini. Hỗ trợ nhiều giọng nói, tốc độ và phong cách khác nhau.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script>
+    // Apply saved theme immediately to prevent FOUC
+    (function() {
+      var t = localStorage.getItem('gemini_voice_studio_theme');
+      if (!t) {
+        t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-content">
+      <div class="logo">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="9" width="3" height="6" rx="1.5" fill="url(#logoGrad)">
+            <animate attributeName="height" values="6;10;6" dur="1.2s" repeatCount="indefinite" />
+            <animate attributeName="y" values="9;7;9" dur="1.2s" repeatCount="indefinite" />
+          </rect>
+          <rect x="7.5" y="5" width="3" height="14" rx="1.5" fill="url(#logoGrad)">
+            <animate attributeName="height" values="14;8;14" dur="1.4s" repeatCount="indefinite" />
+            <animate attributeName="y" values="5;8;5" dur="1.4s" repeatCount="indefinite" />
+          </rect>
+          <rect x="12" y="7" width="3" height="10" rx="1.5" fill="url(#logoGrad)">
+            <animate attributeName="height" values="10;14;10" dur="1.0s" repeatCount="indefinite" />
+            <animate attributeName="y" values="7;5;7" dur="1.0s" repeatCount="indefinite" />
+          </rect>
+          <rect x="16.5" y="4" width="3" height="16" rx="1.5" fill="url(#logoGrad)">
+            <animate attributeName="height" values="16;6;16" dur="1.6s" repeatCount="indefinite" />
+            <animate attributeName="y" values="4;9;4" dur="1.6s" repeatCount="indefinite" />
+          </rect>
+          <defs>
+            <linearGradient id="logoGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#2563eb"/>
+              <stop offset="1" stop-color="#60a5fa"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <h1>Gemini Voice Studio</h1>
+        <span class="badge">AI</span>
+      </div>
+      <div class="header-actions">
+        <button id="theme-toggle-btn" class="icon-btn" title="Chuyển đổi sáng/tối">
+          <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+        <button id="settings-btn" class="icon-btn" title="Cài đặt">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+
+    <!-- LEFT COLUMN: INPUT -->
+    <section id="input-panel" class="panel">
+      <div class="panel-header">
+        <h2>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          Đầu vào
+        </h2>
+        <span id="char-count" class="char-count">0 ký tự</span>
+      </div>
+
+      <div class="input-area">
+        <!-- Google Docs Link -->
+        <div class="gdoc-input-group">
+          <div class="gdoc-input-row">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="gdoc-icon">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+            <input id="gdoc-url-input" type="url" class="gdoc-url-field" placeholder="Dán link Google Docs công khai tại đây...">
+            <button id="gdoc-fetch-btn" class="btn btn-secondary" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Tải nội dung
+            </button>
+          </div>
+          <span id="gdoc-status" class="setting-desc"></span>
+        </div>
+
+        <textarea id="text-input" placeholder="Nhập hoặc dán văn bản tại đây...&#10;&#10;Hỗ trợ: Dán từ Google Docs, nhập trực tiếp, hoặc tải tệp .txt" rows="12"></textarea>
+        <div class="input-actions">
+          <button id="upload-btn" class="btn btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            Tải tệp
+          </button>
+          <input id="file-upload" type="file" accept=".txt,.text" hidden>
+          <button id="clear-btn" class="btn btn-ghost">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              <line x1="10" y1="11" x2="10" y2="17"/>
+              <line x1="14" y1="11" x2="14" y2="17"/>
+            </svg>
+            Xóa
+          </button>
+        </div>
+      </div>
+
+      <div class="segments-section">
+        <div class="segments-header">
+          <h3>Đoạn văn bản</h3>
+          <span id="segment-count" class="badge">0</span>
+        </div>
+        <div id="segments-preview" class="segments-list">
+          <div class="empty-state">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+            <p>Nhập văn bản để xem các đoạn</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="convert-actions">
+        <button id="convert-btn" class="btn btn-primary btn-lg" disabled>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+          Chuyển đổi
+        </button>
+        <button id="cancel-btn" class="btn btn-danger btn-lg hidden">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          </svg>
+          Hủy bỏ
+        </button>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN: OUTPUT -->
+    <section id="output-panel" class="panel">
+      <div class="panel-header">
+        <h2>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+          </svg>
+          Đầu ra
+        </h2>
+      </div>
+
+      <div id="progress-container" class="progress-container hidden">
+        <div class="progress-info">
+          <span id="progress-text">Đang xử lý...</span>
+          <span id="progress-percent">0%</span>
+        </div>
+        <div class="progress-bar-track">
+          <div id="progress-bar" class="progress-bar-fill"></div>
+        </div>
+      </div>
+
+      <div id="audio-list" class="audio-list">
+        <div class="empty-state">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
+            <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
+          </svg>
+          <p>Kết quả âm thanh sẽ hiển thị tại đây</p>
+        </div>
+      </div>
+
+      <div id="output-actions" class="output-actions hidden">
+        <div class="output-actions-left">
+          <select id="format-select" class="select">
+            <option value="wav">WAV</option>
+            <option value="mp3">MP3</option>
+          </select>
+        </div>
+        <div class="output-actions-right">
+          <button id="download-all-btn" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Tải tất cả
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- SETTINGS MODAL -->
+  <div id="settings-modal" class="modal hidden">
+    <div id="settings-overlay" class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>⚙️ Cài đặt</h2>
+        <button id="close-settings-btn" class="icon-btn" title="Đóng">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- API Keys -->
+        <div class="setting-group">
+          <div class="setting-label-row">
+            <label for="api-keys-input">API Keys <span class="required">*</span></label>
+            <span id="api-key-count" class="badge" style="font-size:0.65rem">0 key</span>
+          </div>
+          <p class="setting-desc">Nhập các Gemini API key, mỗi key một dòng. Khi key hết quota sẽ tự động chuyển sang key tiếp theo. Lấy key tại <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">AI Studio</a></p>
+          <div class="apikeys-wrapper">
+            <textarea id="api-keys-input" class="apikeys-textarea" placeholder="AIzaSy...key1&#10;AIzaSy...key2&#10;AIzaSy...key3" rows="4" spellcheck="false"></textarea>
+            <button id="api-key-toggle" class="icon-btn apikeys-toggle-btn" type="button" title="Hiện/Ẩn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+          <span id="api-key-status" class="setting-desc"></span>
+        </div>
+
+        <!-- Model -->
+        <div class="setting-group">
+          <label for="model-select">Model</label>
+          <p class="setting-desc">Nhập API Key rồi nhấn "Tải danh sách" để lấy model khả dụng</p>
+          <div class="model-load-group">
+            <select id="model-select" class="select" style="flex:1">
+              <option value="">-- Chưa tải danh sách --</option>
+            </select>
+            <button id="load-models-btn" class="btn btn-secondary" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+              </svg>
+              Tải danh sách
+            </button>
+          </div>
+          <span id="model-load-status" class="setting-desc"></span>
+        </div>
+
+        <!-- Voice -->
+        <div class="setting-group">
+          <label>Giọng nói</label>
+          <p class="setting-desc">Chọn giọng nói cho đầu ra</p>
+          <div id="voice-grid" class="voice-grid">
+            <button class="voice-btn" data-voice="Zephyr">Zephyr</button>
+            <button class="voice-btn" data-voice="Puck">Puck</button>
+            <button class="voice-btn" data-voice="Charon">Charon</button>
+            <button class="voice-btn active" data-voice="Kore">Kore</button>
+            <button class="voice-btn" data-voice="Fenrir">Fenrir</button>
+            <button class="voice-btn" data-voice="Leda">Leda</button>
+            <button class="voice-btn" data-voice="Orus">Orus</button>
+            <button class="voice-btn" data-voice="Aoede">Aoede</button>
+            <button class="voice-btn" data-voice="Callirrhoe">Callirrhoe</button>
+            <button class="voice-btn" data-voice="Autonoe">Autonoe</button>
+            <button class="voice-btn" data-voice="Enceladus">Enceladus</button>
+            <button class="voice-btn" data-voice="Iapetus">Iapetus</button>
+            <button class="voice-btn" data-voice="Umbriel">Umbriel</button>
+            <button class="voice-btn" data-voice="Algieba">Algieba</button>
+            <button class="voice-btn" data-voice="Despina">Despina</button>
+            <button class="voice-btn" data-voice="Erinome">Erinome</button>
+            <button class="voice-btn" data-voice="Algenib">Algenib</button>
+            <button class="voice-btn" data-voice="Rasalgethi">Rasalgethi</button>
+            <button class="voice-btn" data-voice="Laomedeia">Laomedeia</button>
+            <button class="voice-btn" data-voice="Achernar">Achernar</button>
+            <button class="voice-btn" data-voice="Alnilam">Alnilam</button>
+            <button class="voice-btn" data-voice="Schedar">Schedar</button>
+            <button class="voice-btn" data-voice="Gacrux">Gacrux</button>
+            <button class="voice-btn" data-voice="Pulcherrima">Pulcherrima</button>
+            <button class="voice-btn" data-voice="Achird">Achird</button>
+            <button class="voice-btn" data-voice="Zubenelgenubi">Zubenelgenubi</button>
+            <button class="voice-btn" data-voice="Vindemiatrix">Vindemiatrix</button>
+            <button class="voice-btn" data-voice="Sadachbia">Sadachbia</button>
+            <button class="voice-btn" data-voice="Sadaltager">Sadaltager</button>
+            <button class="voice-btn" data-voice="Sulafat">Sulafat</button>
+          </div>
+        </div>
+
+        <!-- Style -->
+        <div class="setting-group">
+          <label for="style-input">Phong cách giọng nói</label>
+          <p class="setting-desc">Mô tả cách bạn muốn giọng nói thể hiện</p>
+          <textarea id="style-input" placeholder="Ví dụ: Đọc rõ ràng, chậm rãi, giọng ấm áp..." rows="3"></textarea>
+        </div>
+
+        <!-- Speed -->
+        <div class="setting-group">
+          <label for="speed-select">Tốc độ</label>
+          <select id="speed-select" class="select">
+            <option value="very-slow">Rất chậm</option>
+            <option value="slow">Chậm</option>
+            <option value="normal" selected>Bình thường</option>
+            <option value="fast">Nhanh</option>
+            <option value="very-fast">Rất nhanh</option>
+          </select>
+        </div>
+
+        <!-- Volume -->
+        <div class="setting-group">
+          <label>Âm lượng phát lại</label>
+          <div class="slider-group">
+            <input id="volume-slider" type="range" min="0" max="100" value="80">
+            <span id="volume-value">80%</span>
+          </div>
+        </div>
+
+        <!-- Default Format -->
+        <div class="setting-group">
+          <label for="default-format-select">Định dạng mặc định</label>
+          <select id="default-format-select" class="select">
+            <option value="wav">WAV (Chất lượng cao)</option>
+            <option value="mp3">MP3 (Nhỏ gọn)</option>
+          </select>
+        </div>
+
+        <!-- Delay -->
+        <div class="setting-group">
+          <label for="delay-input">Độ trễ giữa các yêu cầu</label>
+          <p class="setting-desc">Tăng nếu gặp lỗi giới hạn tốc độ (429)</p>
+          <div class="input-with-suffix">
+            <input id="delay-input" type="number" min="100" max="10000" value="500" step="100">
+            <span class="suffix">ms</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="save-settings-btn" class="btn btn-primary">Lưu cài đặt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toast-container" class="toast-container"></div>
+
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/text-parser.js"></script>
+<script src="js/tts-engine.js"></script>
+<script src="js/audio-manager.js"></script>
+<script src="js/ui-controller.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
