@@ -9,72 +9,46 @@ window.TextParser = {
    * Parse text into segments suitable for TTS processing.
    * 1. Split by newline (supports both \n and \n\n from Google Docs export)
    * 2. Trim and filter empty lines
-   * 3. Merge consecutive short lines (< MIN_MERGE_SIZE) into bigger chunks
-   * 4. Split oversized segments by sentence boundaries
+   * 3. Each non-empty line = 1 segment (no merging)
+   * 4. Split oversized segments (> 3000 chars) by sentence boundaries
    * 5. Assign sequential IDs starting from 1
    *
    * @param {string} text - The raw input text.
    * @returns {Array<{ id: number, text: string, charCount: number }>}
    */
-  MIN_MERGE_SIZE: 200,
-
   parseText(text) {
     if (!text || typeof text !== 'string') {
       return [];
     }
 
-    // Split by any newline (handles both \n and \n\n)
-    var rawLines = text.split(/\n/);
-
-    // Trim and filter empty lines
-    var lines = rawLines
+    // Split by any newline, trim and filter empty
+    var lines = text.split(/\n/)
       .map(function (p) { return p.trim(); })
       .filter(function (p) { return p.length > 0; });
 
     if (lines.length === 0) return [];
 
-    // Merge consecutive short lines to avoid too many tiny segments
-    var merged = [];
-    var buffer = '';
+    // Expand oversized lines only
+    var allChunks = [];
     for (var i = 0; i < lines.length; i++) {
       var line = lines[i];
-
-      // If buffer + line is still small, merge them
-      if (buffer.length > 0 && (buffer.length + line.length + 1) <= this.MIN_MERGE_SIZE) {
-        buffer = buffer + '\n' + line;
-      } else if (buffer.length === 0) {
-        buffer = line;
-      } else {
-        // Buffer is big enough, push it and start new
-        merged.push(buffer);
-        buffer = line;
-      }
-    }
-    if (buffer.length > 0) {
-      merged.push(buffer);
-    }
-
-    // Expand oversized segments
-    var allChunks = [];
-    for (var j = 0; j < merged.length; j++) {
-      var para = merged[j];
-      if (para.length > this.MAX_CHUNK_SIZE) {
-        var subChunks = this._splitLongSegment(para);
-        for (var k = 0; k < subChunks.length; k++) {
-          allChunks.push(subChunks[k]);
+      if (line.length > this.MAX_CHUNK_SIZE) {
+        var subChunks = this._splitLongSegment(line);
+        for (var j = 0; j < subChunks.length; j++) {
+          allChunks.push(subChunks[j]);
         }
       } else {
-        allChunks.push(para);
+        allChunks.push(line);
       }
     }
 
     // Assign sequential IDs
     var segments = [];
-    for (var m = 0; m < allChunks.length; m++) {
+    for (var k = 0; k < allChunks.length; k++) {
       segments.push({
-        id: m + 1,
-        text: allChunks[m],
-        charCount: allChunks[m].length
+        id: k + 1,
+        text: allChunks[k],
+        charCount: allChunks[k].length
       });
     }
 
