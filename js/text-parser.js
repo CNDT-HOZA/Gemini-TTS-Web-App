@@ -287,6 +287,64 @@ window.TextParser = {
       throw new Error('Tài liệu trống, không có nội dung.');
     }
 
-    return text.trim();
+    return this._cleanGoogleDocText(text.trim());
+  },
+
+  /**
+   * Clean Google Docs exported text by removing:
+   * - Footnotes section (everything after a line of underscores)
+   * - Inline footnote markers like [a], [1], [*], [i]
+   * - Header/footer repeated lines
+   * - BOM characters
+   * @param {string} text - Raw exported text
+   * @returns {string} Cleaned text with only main content
+   * @private
+   */
+  _cleanGoogleDocText(text) {
+    // Remove BOM
+    text = text.replace(/^\uFEFF/, '');
+
+    // Split into lines
+    var lines = text.split('\n');
+    var cleanLines = [];
+    var hitFootnoteSeparator = false;
+
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      var trimmed = line.trim();
+
+      // Detect footnote separator: a line of mostly underscores (≥5)
+      if (/^_{5,}$/.test(trimmed) || /^-{5,}$/.test(trimmed) || /^={5,}$/.test(trimmed)) {
+        hitFootnoteSeparator = true;
+        continue;
+      }
+
+      // Stop adding lines once we hit footnotes section
+      if (hitFootnoteSeparator) {
+        continue;
+      }
+
+      // Skip lines that are just footnote markers: [a], [1], [i], [*], etc.
+      if (/^\[\d+\]$/.test(trimmed) || /^\[[a-z]\]$/.test(trimmed) || /^\[\*+\]$/.test(trimmed)) {
+        continue;
+      }
+
+      // Skip lines that look like page numbers
+      if (/^\d{1,3}$/.test(trimmed) && trimmed.length <= 3) {
+        continue;
+      }
+
+      cleanLines.push(line);
+    }
+
+    // Remove inline footnote markers from text: [a], [1], [*], [i], [ii], etc.
+    var result = cleanLines.join('\n');
+    result = result.replace(/\[(\d+|[a-z]|[ivxlc]+|\*+)\]/gi, '');
+
+    // Clean up extra whitespace left by removals
+    result = result.replace(/  +/g, ' ');
+    result = result.replace(/\n{3,}/g, '\n\n');
+
+    return result.trim();
   }
 };
