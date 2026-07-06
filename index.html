@@ -261,6 +261,19 @@
           </svg>
           Đầu ra
         </h2>
+        <div class="panel-header-actions">
+          <div id="output-stats" class="output-stats hidden">
+            <span class="stat-done" id="stat-done" title="Hoàn thành">✅ <span id="stat-done-count">0</span></span>
+            <span class="stat-error" id="stat-error" title="Lỗi">❌ <span id="stat-error-count">0</span></span>
+          </div>
+          <button id="retry-failed-btn" class="btn btn-warning btn-convert-inline hidden" title="Chạy lại các đoạn bị lỗi">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"/>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+            Thử lại lỗi
+          </button>
+        </div>
       </div>
 
       <div id="progress-container" class="progress-container hidden">

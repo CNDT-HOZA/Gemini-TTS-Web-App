@@ -12,6 +12,9 @@
 window.App = {
   _segments: [],        // Current parsed segments [{id, text}, …]
   _results: {},         // Conversion results: { segmentId: base64Pcm }
+  _failedSegments: [],  // Segments that failed: [{id, text, charCount, error}]
+  _doneCount: 0,
+  _errorCount: 0,
   _isConverting: false,
   _dirHandle: null,     // File System Access API directory handle
 
@@ -194,6 +197,11 @@ window.App = {
     if (el.cancelBtn) {
       el.cancelBtn.addEventListener('click', function () {
         if (TTSEngine.cancel) TTSEngine.cancel();
+      });
+    }
+    if (el.retryFailedBtn) {
+      el.retryFailedBtn.addEventListener('click', function () {
+        self._retryFailed();
       });
     }
 
@@ -452,6 +460,9 @@ window.App = {
 
     this._isConverting = true;
     this._results = {};
+    this._failedSegments = [];
+    this._doneCount = 0;
+    this._errorCount = 0;
     // Reset key rotation to start from first key
     if (SettingsManager.resetKeyIndex) SettingsManager.resetKeyIndex();
     UIController.setConvertingState(true);
@@ -471,7 +482,9 @@ window.App = {
 
       onSegmentDone: function (id, base64Pcm) {
         self._results[id] = base64Pcm;
+        self._doneCount++;
         UIController.updateSegmentStatus(id, 'done');
+        UIController.updateOutputStats(self._doneCount, self._errorCount);
 
         var duration = AudioManager.getDuration
           ? AudioManager.getDuration(base64Pcm)
@@ -483,7 +496,21 @@ window.App = {
       },
 
       onSegmentError: function (id, error) {
+        self._errorCount++;
+        // Track the failed segment for retry
+        for (var i = 0; i < segments.length; i++) {
+          if (segments[i].id === id) {
+            self._failedSegments.push({
+              id: segments[i].id,
+              text: segments[i].text,
+              charCount: segments[i].charCount,
+              error: error
+            });
+            break;
+          }
+        }
         UIController.updateSegmentStatus(id, 'error');
+        UIController.updateOutputStats(self._doneCount, self._errorCount);
         UIController.showToast('Đoạn #' + id + ': ' + error, 'error');
       },
 
@@ -498,11 +525,14 @@ window.App = {
           }
         }
 
+        UIController.updateOutputStats(self._doneCount, self._errorCount);
+
         if (successCount > 0) {
           UIController.showOutputActions(true);
           UIController.showToast(
-            'Hoàn thành! ' + successCount + '/' + results.length + ' đoạn thành công.',
-            'success'
+            'Hoàn thành! ' + successCount + '/' + results.length + ' đoạn thành công.' +
+            (self._errorCount > 0 ? ' (' + self._errorCount + ' lỗi)' : ''),
+            self._errorCount > 0 ? 'warning' : 'success'
           );
           UIController.updateProgress(results.length, results.length);
         } else {
@@ -516,7 +546,108 @@ window.App = {
       onCancel: function () {
         self._isConverting = false;
         UIController.setConvertingState(false);
+        UIController.updateOutputStats(self._doneCount, self._errorCount);
         UIController.showToast('Đã hủy chuyển đổi.', 'warning');
+      }
+    });
+  },
+
+  /**
+   * Retry only the failed segments.
+   */
+  _retryFailed() {
+    if (this._failedSegments.length === 0) return;
+    if (this._isConverting) return;
+
+    var settings = SettingsManager.getAll();
+    var validation = SettingsManager.validate ? SettingsManager.validate() : { valid: true };
+    if (!validation.valid) {
+      UIController.showToast(
+        (validation.errors && validation.errors[0]) || 'Cài đặt không hợp lệ.',
+        'error'
+      );
+      return;
+    }
+
+    this._isConverting = true;
+    if (SettingsManager.resetKeyIndex) SettingsManager.resetKeyIndex();
+    UIController.setConvertingState(true);
+    UIController.showProgress(true);
+
+    // Hide retry button during retry
+    if (UIController._elements.retryFailedBtn) {
+      UIController._elements.retryFailedBtn.classList.add('hidden');
+    }
+
+    var self = this;
+    var retrySegments = this._failedSegments.slice();
+    this._failedSegments = [];
+    var retryErrorCount = 0;
+
+    // Reset the status of segments being retried
+    for (var r = 0; r < retrySegments.length; r++) {
+      UIController.updateSegmentStatus(retrySegments[r].id, 'pending');
+    }
+
+    TTSEngine.convertAll(retrySegments, settings, {
+      onProgress: function (current, total) {
+        UIController.updateProgress(current, total);
+        var seg = retrySegments[current - 1];
+        if (seg) UIController.updateSegmentStatus(seg.id, 'processing');
+      },
+
+      onSegmentDone: function (id, base64Pcm) {
+        self._results[id] = base64Pcm;
+        self._doneCount++;
+        self._errorCount--;
+        UIController.updateSegmentStatus(id, 'done');
+        UIController.updateOutputStats(self._doneCount, self._errorCount);
+
+        var duration = AudioManager.getDuration
+          ? AudioManager.getDuration(base64Pcm)
+          : 0;
+        var formatted = AudioManager.formatDuration
+          ? AudioManager.formatDuration(duration)
+          : '0:00';
+        UIController.showAudioPlayer(id, formatted);
+      },
+
+      onSegmentError: function (id, error) {
+        retryErrorCount++;
+        for (var i = 0; i < retrySegments.length; i++) {
+          if (retrySegments[i].id === id) {
+            self._failedSegments.push(retrySegments[i]);
+            break;
+          }
+        }
+        UIController.updateSegmentStatus(id, 'error');
+        UIController.updateOutputStats(self._doneCount, self._errorCount);
+      },
+
+      onComplete: function () {
+        self._isConverting = false;
+        UIController.setConvertingState(false);
+        UIController.updateOutputStats(self._doneCount, self._errorCount);
+
+        if (retryErrorCount === 0) {
+          UIController.showToast('✅ Tất cả đoạn lỗi đã được khắc phục!', 'success');
+        } else {
+          UIController.showToast(
+            'Vẫn còn ' + retryErrorCount + ' đoạn lỗi. Bấm "Đọc lại lỗi" để thử lại.',
+            'warning'
+          );
+        }
+
+        if (self._doneCount > 0) {
+          UIController.showOutputActions(true);
+        }
+      },
+
+      onCancel: function () {
+        self._isConverting = false;
+        UIController.setConvertingState(false);
+        UIController.updateOutputStats(self._doneCount, self._errorCount);
+        UIController.showToast('Đã hủy thử lại.', 'warning');
       }
     });
   },

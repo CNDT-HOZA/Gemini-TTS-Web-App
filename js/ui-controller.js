@@ -45,7 +45,8 @@ window.UIController = {
       'batch-folder-btn', 'batch-folder-name',
       'batch-polling-status', 'batch-status-text',
       'batch-table-body', 'batch-progress', 'batch-progress-bar',
-      'batch-progress-label', 'batch-progress-detail'
+      'batch-progress-label', 'batch-progress-detail',
+      'output-stats', 'stat-done-count', 'stat-error-count', 'retry-failed-btn'
     ];
 
     ids.forEach((id) => {
@@ -533,6 +534,50 @@ window.UIController = {
     }
     if (this._elements.progressPercent) {
       this._elements.progressPercent.textContent = '0%';
+    }
+    this.resetOutputStats();
+  },
+
+  /**
+   * Update the output stats display (done/error counts).
+   * @param {number} doneCount
+   * @param {number} errorCount
+   */
+  updateOutputStats(doneCount, errorCount) {
+    if (this._elements.outputStats) {
+      this._elements.outputStats.classList.remove('hidden');
+    }
+    if (this._elements.statDoneCount) {
+      this._elements.statDoneCount.textContent = String(doneCount);
+    }
+    if (this._elements.statErrorCount) {
+      this._elements.statErrorCount.textContent = String(errorCount);
+    }
+    // Show retry button only when there are errors and we're not converting
+    if (this._elements.retryFailedBtn) {
+      if (errorCount > 0) {
+        this._elements.retryFailedBtn.classList.remove('hidden');
+      } else {
+        this._elements.retryFailedBtn.classList.add('hidden');
+      }
+    }
+  },
+
+  /**
+   * Reset output stats to hidden state.
+   */
+  resetOutputStats() {
+    if (this._elements.outputStats) {
+      this._elements.outputStats.classList.add('hidden');
+    }
+    if (this._elements.statDoneCount) {
+      this._elements.statDoneCount.textContent = '0';
+    }
+    if (this._elements.statErrorCount) {
+      this._elements.statErrorCount.textContent = '0';
+    }
+    if (this._elements.retryFailedBtn) {
+      this._elements.retryFailedBtn.classList.add('hidden');
     }
   },
 
