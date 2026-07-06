@@ -147,17 +147,27 @@ function pollSheet() {
     ['appsScriptUrl', 'apiKeys', 'enabled', 'model', 'voice', 'speed', 'segmentDelay'],
     function (settings) {
       if (!settings.appsScriptUrl || !settings.enabled) {
-        console.log('[TTS] Polling skipped (no URL or disabled).');
+        console.log('[TTS] Polling skipped (no URL or disabled). URL:', settings.appsScriptUrl, 'Enabled:', settings.enabled);
         return;
       }
 
+      // Parse apiKeys from string to array
+      var keysRaw = settings.apiKeys || '';
+      var keysArray = keysRaw.split('\n').map(function (k) { return k.trim(); }).filter(function (k) { return k.length > 0; });
+      settings._apiKeysArray = keysArray;
+
       state.lastCheck = new Date().toISOString();
+      console.log('[TTS] Polling sheet...', settings.appsScriptUrl);
 
       var url = settings.appsScriptUrl + '?action=get_pending';
 
       fetch(url, { redirect: 'follow' })
-        .then(function (res) { return res.json(); })
+        .then(function (res) {
+          console.log('[TTS] Apps Script response status:', res.status);
+          return res.json();
+        })
         .then(function (data) {
+          console.log('[TTS] Apps Script data:', JSON.stringify(data).substring(0, 200));
           var jobs = (data && data.pending) ? data.pending : [];
 
           // Update badge
@@ -165,12 +175,13 @@ function pollSheet() {
           chrome.action.setBadgeText({ text: badgeText });
           chrome.action.setBadgeBackgroundColor({ color: '#4285F4' });
 
+          console.log('[TTS] Found', jobs.length, 'pending jobs');
           if (jobs.length > 0) {
             processJob(jobs[0], settings);
           }
         })
         .catch(function (err) {
-          console.error('[TTS] Poll error:', err);
+          console.error('[TTS] Poll error:', err.message || err);
           state.errorCount++;
         });
     }
@@ -183,7 +194,18 @@ function processJob(job, settings) {
   state.currentJob = job;
 
   var appsScriptUrl = settings.appsScriptUrl;
-  var apiKeys = settings.apiKeys || [];
+  var apiKeys = settings._apiKeysArray || [];
+  if (apiKeys.length === 0) {
+    // Fallback: try parsing from string
+    var raw = settings.apiKeys || '';
+    apiKeys = raw.split('\n').map(function (k) { return k.trim(); }).filter(function (k) { return k.length > 0; });
+  }
+  if (apiKeys.length === 0) {
+    console.error('[TTS] No API keys configured!');
+    handleJobError(appsScriptUrl, job.row, 'Chưa cài đặt API Key');
+    return;
+  }
+  console.log('[TTS] Processing job row', job.row, 'with', apiKeys.length, 'API keys');
   var model = settings.model || 'gemini-2.5-flash-preview-tts';
   var voice = settings.voice || 'Kore';
   var speed = settings.speed || 'normal';
