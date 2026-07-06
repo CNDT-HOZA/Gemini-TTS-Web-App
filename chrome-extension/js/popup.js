@@ -223,16 +223,25 @@
 
     // Verify stored folder
     function verifyStoredHandle() {
+      // First show saved folder name from chrome.storage
+      chrome.storage.local.get(['savedFolderName'], function (data) {
+        if (data.savedFolderName) {
+          folderNameEl.textContent = data.savedFolderName;
+          btnFolder.classList.add("has-folder");
+        }
+      });
+      // Then try to verify actual handle permission
       getDirHandle(function (err, handle) {
-        if (err || !handle) { folderNameEl.textContent = "Chưa chọn"; return; }
+        if (err || !handle) return;
         handle.queryPermission({ mode: "readwrite" })
           .then(function (perm) {
             if (perm === "granted") {
               folderNameEl.textContent = handle.name;
               btnFolder.classList.add("has-folder");
-            } else { folderNameEl.textContent = "Chưa chọn"; }
+              chrome.storage.local.set({ savedFolderName: handle.name });
+            }
           })
-          .catch(function () { folderNameEl.textContent = "Chưa chọn"; });
+          .catch(function () { /* keep showing saved name */ });
       });
     }
 
@@ -264,6 +273,8 @@
             if (err) { showToast("❌ Lỗi lưu thư mục"); return; }
             folderNameEl.textContent = handle.name;
             btnFolder.classList.add("has-folder");
+            // Also save name to chrome.storage for persistence
+            chrome.storage.local.set({ savedFolderName: handle.name });
             showToast("📁 Đã chọn: " + handle.name);
           });
         })

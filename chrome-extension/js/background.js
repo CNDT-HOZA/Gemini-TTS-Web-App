@@ -19,7 +19,7 @@ var DEFAULT_DELAY_MS = 500;
 
 // ── Lifecycle events ──────────────────────────────────────
 chrome.runtime.onInstalled.addListener(function () {
-  chrome.alarms.create(ALARM_NAME, { periodInMinutes: 0.5 });
+  chrome.alarms.create(ALARM_NAME, { periodInMinutes: 1 });
   state.isPolling = true;
   chrome.storage.local.set({ enabled: true });
 
@@ -34,7 +34,7 @@ chrome.runtime.onInstalled.addListener(function () {
 chrome.runtime.onStartup.addListener(function () {
   chrome.storage.local.get(['enabled'], function (data) {
     if (data.enabled) {
-      chrome.alarms.create(ALARM_NAME, { periodInMinutes: 0.5 });
+      chrome.alarms.create(ALARM_NAME, { periodInMinutes: 1 });
       state.isPolling = true;
       console.log('[TTS] Startup – polling alarm restored.');
     }
@@ -58,8 +58,10 @@ chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
 
   if (cmd === 'startPolling') {
     chrome.storage.local.set({ enabled: true });
-    chrome.alarms.create(ALARM_NAME, { periodInMinutes: 0.5 });
+    chrome.alarms.create(ALARM_NAME, { periodInMinutes: 1 });
     state.isPolling = true;
+    console.log('[TTS] Polling started – triggering immediate poll');
+    pollSheet(); // Poll immediately, don't wait for alarm
     sendResponse({ ok: true });
     return true;
   }
