@@ -273,6 +273,20 @@
             </svg>
             Thử lại lỗi
           </button>
+          <div id="output-actions" class="output-actions-inline hidden">
+            <select id="format-select" class="select select-sm">
+              <option value="wav">WAV</option>
+              <option value="mp3">MP3</option>
+            </select>
+            <button id="download-all-btn" class="btn btn-primary btn-convert-inline">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Tải tất cả
+            </button>
+          </div>
         </div>
       </div>
 
@@ -293,25 +307,6 @@
             <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
           </svg>
           <p>Kết quả âm thanh sẽ hiển thị tại đây</p>
-        </div>
-      </div>
-
-      <div id="output-actions" class="output-actions hidden">
-        <div class="output-actions-left">
-          <select id="format-select" class="select">
-            <option value="wav">WAV</option>
-            <option value="mp3">MP3</option>
-          </select>
-        </div>
-        <div class="output-actions-right">
-          <button id="download-all-btn" class="btn btn-primary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            Tải tất cả
-          </button>
         </div>
       </div>
     </section>

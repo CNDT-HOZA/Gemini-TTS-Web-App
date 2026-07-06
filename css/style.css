@@ -351,6 +351,19 @@ a:hover {
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
 }
 
+.output-actions-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.select-sm {
+  padding: 4px 8px !important;
+  font-size: 0.8rem !important;
+  min-width: auto !important;
+  border-radius: var(--radius-sm) !important;
+}
+
 
 /* ============================================================
    TEXTAREA
