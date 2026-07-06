@@ -304,36 +304,55 @@ window.TextParser = {
     // Remove BOM
     text = text.replace(/^\uFEFF/, '');
 
-    // Split into lines
     var lines = text.split('\n');
     var cleanLines = [];
     var hitFootnoteSeparator = false;
+    var inFootnoteBlock = false;
 
     for (var i = 0; i < lines.length; i++) {
       var line = lines[i];
       var trimmed = line.trim();
 
-      // Detect footnote separator: a line of mostly underscores (≥5)
-      if (/^_{5,}$/.test(trimmed) || /^-{5,}$/.test(trimmed) || /^={5,}$/.test(trimmed)) {
+      // Detect footnote separator: line of underscores/dashes (≥5)
+      if (/^[_\-=]{5,}$/.test(trimmed)) {
         hitFootnoteSeparator = true;
         continue;
       }
 
-      // Stop adding lines once we hit footnotes section
+      // Everything after separator is footnotes — skip all
       if (hitFootnoteSeparator) {
         continue;
       }
 
-      // Skip lines that are just footnote markers: [a], [1], [i], [*], etc.
-      if (/^\[\d+\]$/.test(trimmed) || /^\[[a-z]\]$/.test(trimmed) || /^\[\*+\]$/.test(trimmed)) {
+      // Detect footnote line: starts with [a], [1], [*], [i], [ii], etc. followed by content
+      // e.g. "[a] Đây là nội dung chú thích"
+      // e.g. "[1] Nguồn: Wikipedia"
+      if (/^\[(\d+|[a-z]|[ivxlc]+|\*+)\]\s*/i.test(trimmed)) {
+        inFootnoteBlock = true;
         continue;
       }
 
-      // Skip lines that look like page numbers
-      if (/^\d{1,3}$/.test(trimmed) && trimmed.length <= 3) {
+      // If we're in a footnote block, continuation lines (indented or following footnote)
+      // stop when we hit a normal non-indented line that doesn't look like a footnote
+      if (inFootnoteBlock) {
+        // If line starts with another footnote marker, still in block
+        if (/^\[(\d+|[a-z]|[ivxlc]+|\*+)\]\s*/i.test(trimmed)) {
+          continue;
+        }
+        // If line is empty, could be gap between footnotes
+        if (trimmed.length === 0) {
+          continue;
+        }
+        // Otherwise, footnote block ended — back to normal content
+        inFootnoteBlock = false;
+      }
+
+      // Skip standalone page numbers (1-3 digits on a line by themselves)
+      if (/^\d{1,3}$/.test(trimmed)) {
         continue;
       }
 
+      // Skip empty lines at this point (will clean up later)
       cleanLines.push(line);
     }
 
@@ -341,7 +360,7 @@ window.TextParser = {
     var result = cleanLines.join('\n');
     result = result.replace(/\[(\d+|[a-z]|[ivxlc]+|\*+)\]/gi, '');
 
-    // Clean up extra whitespace left by removals
+    // Clean up extra whitespace
     result = result.replace(/  +/g, ' ');
     result = result.replace(/\n{3,}/g, '\n\n');
 
