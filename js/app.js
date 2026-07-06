@@ -769,9 +769,11 @@ window.App = {
   // ─── Download All ─────────────────────────────────────────────────
 
   /**
-   * Merge and download all successfully converted segments as a single file.
+   * Download all segments as a ZIP containing:
+   * - Individual files: 001.wav, 002.wav, ...
+   * - Merged full audio: full.wav
    */
-  _handleDownloadAll() {
+  async _handleDownloadAll() {
     var formatSelect = document.getElementById('format-select');
     var format = (formatSelect && formatSelect.value) ||
                  SettingsManager.get('format') || 'wav';
@@ -780,34 +782,47 @@ window.App = {
       .map(Number)
       .sort(function (a, b) { return a - b; });
 
-    var self = this;
-    var pcmArray = sortedIds.map(function (id) { return self._results[id]; });
-
-    if (pcmArray.length === 0) {
+    if (sortedIds.length === 0) {
       UIController.showToast('Không có dữ liệu âm thanh để tải.', 'warning');
       return;
     }
 
-    UIController.showToast('Đang chuẩn bị tải xuống...', 'info');
+    UIController.showToast('Đang tạo file ZIP...', 'info');
 
     try {
-      var downloadPromise = AudioManager.downloadAll
-        ? AudioManager.downloadAll(pcmArray, 'gemini_voice_studio_output.' + format, format)
-        : Promise.reject(new Error('downloadAll not available'));
+      var zip = new JSZip();
+      var self = this;
+      var allPcmBase64 = [];
 
-      Promise.resolve(downloadPromise)
-        .then(function () {
-          UIController.showToast('Đã tải tất cả đoạn!', 'success');
-        })
-        .catch(function (err) {
-          UIController.showToast(
-            'Lỗi: ' + (err && err.message ? err.message : err),
-            'error'
-          );
-        });
+      // Add individual segments
+      for (var i = 0; i < sortedIds.length; i++) {
+        var id = sortedIds[i];
+        var base64Pcm = self._results[id];
+        allPcmBase64.push(base64Pcm);
+
+        var segBlob = await AudioManager.getSegmentBlob(base64Pcm, format);
+        var padded = String(i + 1);
+        while (padded.length < 3) padded = '0' + padded;
+        zip.file(padded + '.' + format, segBlob);
+      }
+
+      // Create merged full audio
+      var fullBlob = await AudioManager.mergeAndConvert(allPcmBase64, format);
+      zip.file('full.' + format, fullBlob);
+
+      // Generate and download ZIP
+      var zipBlob = await zip.generateAsync({ type: 'blob' });
+      var timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      var zipName = 'gemini_tts_' + timestamp + '_' + sortedIds.length + 'segments.zip';
+
+      AudioManager.download(zipBlob, zipName);
+      UIController.showToast(
+        'Đã tải ZIP: ' + sortedIds.length + ' đoạn + full.' + format,
+        'success'
+      );
     } catch (err) {
       UIController.showToast(
-        'Lỗi: ' + (err && err.message ? err.message : err),
+        'Lỗi tạo ZIP: ' + (err && err.message ? err.message : err),
         'error'
       );
     }
