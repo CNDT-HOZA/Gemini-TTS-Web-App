@@ -1,22 +1,11 @@
 @echo off
 chcp 65001 >nul 2>&1
-title Gemini TTS - Voice Studio
-
-echo.
-echo   ╔══════════════════════════════════════════════╗
-echo   ║     🎙️  Gemini TTS - Voice Studio            ║
-echo   ║         Đang khởi động...                     ║
-echo   ╚══════════════════════════════════════════════╝
-echo.
+title Gemini TTS
 
 :: Check Node.js
 where node >nul 2>&1
 if %errorlevel% neq 0 (
-    echo   ❌ Chưa cài Node.js!
-    echo.
-    echo   Hãy tải Node.js tại: https://nodejs.org
-    echo   Chọn bản LTS, cài xong chạy lại file này.
-    echo.
+    echo Chua cai Node.js! Tai tai: https://nodejs.org
     pause
     exit /b 1
 )
@@ -26,11 +15,10 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr :5500 ^| findstr LISTENING 2^
     taskkill /PID %%a /F >nul 2>&1
 )
 
-:: Open browser after 1 second
-start "" cmd /c "timeout /t 1 /nobreak >nul & start http://localhost:5500"
+:: Open browser
+start "" "http://localhost:5500"
 
-:: Start server
-cd /d "%~dp0"
-node server.js
+:: Start server minimized (this window will close)
+start /min "Gemini TTS Server" cmd /c "cd /d "%~dp0" && node server.js"
 
-pause
+exit

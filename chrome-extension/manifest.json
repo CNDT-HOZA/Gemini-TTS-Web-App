@@ -8,7 +8,8 @@
     "notifications",
     "alarms",
     "offscreen",
-    "sidePanel"
+    "sidePanel",
+    "downloads"
   ],
   "host_permissions": [
     "https://generativelanguage.googleapis.com/*",

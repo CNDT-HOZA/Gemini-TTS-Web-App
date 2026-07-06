@@ -271,50 +271,53 @@ function processJob(job, settings) {
           var fullPcmBase64 = concatenateBase64Pcm(allPcmBase64);
           var fullWavDataUrl = createWavDataUrl(fullPcmBase64);
 
-          // Store all files for popup to save
-          var filesToSave = segmentFiles.slice();
-          filesToSave.push({
-            dataUrl: fullWavDataUrl,
-            filename: 'full.wav',
-            subfolder: folderName
+          // 6. Save all files via chrome.downloads
+          var downloadFolder = 'Gemini_TTS/' + folderName + '/';
+          console.log('[TTS] Saving', segmentFiles.length, 'segments + full.wav to', downloadFolder);
+
+          // Save each segment
+          for (var f = 0; f < segmentFiles.length; f++) {
+            chrome.downloads.download({
+              url: segmentFiles[f].dataUrl,
+              filename: downloadFolder + segmentFiles[f].filename,
+              conflictAction: 'overwrite'
+            });
+          }
+          // Save full.wav
+          chrome.downloads.download({
+            url: fullWavDataUrl,
+            filename: downloadFolder + 'full.wav',
+            conflictAction: 'overwrite'
           });
 
-          storePendingFiles(filesToSave);
-
-          // Notify popup about pending saves
-          chrome.runtime.sendMessage({
-            action: 'saveFiles',
-            files: filesToSave,
-            folder: folderName
-          }, function () {
-            // Ignore if popup is not open
-            if (chrome.runtime.lastError) {
-              console.log('[TTS] Popup not open – files stored for later.');
-            }
-          });
-
-          // 6. Update sheet → Đã Xong
+          // 7. Update sheet → Đã Xong
           updateSheetStatus(appsScriptUrl, row, 'Đã Xong');
 
-          // 7. Notification
+          // 8. Notification
           chrome.notifications.create('job-done-' + row, {
             type: 'basic',
             iconUrl: 'icons/icon128.png',
             title: 'Gemini TTS – Hoàn thành!',
-            message: 'Đã tạo xong ' + segments.length + ' đoạn cho hàng ' + row
+            message: 'Đã tạo xong ' + segments.length + ' đoạn cho dòng ' + row
           });
+
+          // 9. Notify popup for log
+          chrome.runtime.sendMessage({
+            action: 'jobComplete',
+            job: { row: row, note: note, segments: segments.length }
+          }, function () { if (chrome.runtime.lastError) { /* panel closed */ } });
 
           state.processedCount++;
           state.isProcessing = false;
           state.currentJob = null;
         },
         function onError(errMsg) {
-          handleJobError(appsScriptUrl, row, errMsg);
+          handleJobError(appsScriptUrl, row, errMsg, note);
         }
       );
     })
     .catch(function (err) {
-      handleJobError(appsScriptUrl, row, err.message || String(err));
+      handleJobError(appsScriptUrl, row, err.message || String(err), note);
     });
 }
 
@@ -621,7 +624,7 @@ function updateSheetStatus(appsScriptUrl, row, status) {
 }
 
 // ── Error handler for job ─────────────────────────────────
-function handleJobError(appsScriptUrl, row, errMsg) {
+function handleJobError(appsScriptUrl, row, errMsg, note) {
   console.error('[TTS] Job error row ' + row + ':', errMsg);
 
   updateSheetStatus(appsScriptUrl, row, 'Lỗi');
@@ -630,8 +633,15 @@ function handleJobError(appsScriptUrl, row, errMsg) {
     type: 'basic',
     iconUrl: 'icons/icon128.png',
     title: 'Gemini TTS – Lỗi!',
-    message: 'Hàng ' + row + ': ' + errMsg
+    message: 'Dòng ' + row + ': ' + errMsg
   });
+
+  // Notify popup for log
+  chrome.runtime.sendMessage({
+    action: 'jobError',
+    job: { row: row, note: note || '' },
+    error: errMsg
+  }, function () { if (chrome.runtime.lastError) { /* panel closed */ } });
 
   state.errorCount++;
   state.isProcessing = false;

@@ -90,8 +90,6 @@
     var statErrors = document.getElementById("statErrors");
     var btnStart = document.getElementById("btnStart");
     var btnStop = document.getElementById("btnStop");
-    var btnFolder = document.getElementById("btnFolder");
-    var folderNameEl = document.getElementById("folderName");
     var btnReload = document.getElementById("btnReload");
     var settingsToggle = document.getElementById("settingsToggle");
     var settingsChevron = document.getElementById("settingsChevron");
@@ -262,27 +260,6 @@
       });
     });
 
-    btnFolder.addEventListener("click", function () {
-      if (typeof window.showDirectoryPicker !== "function") {
-        showToast("❌ Trình duyệt không hỗ trợ");
-        return;
-      }
-      window.showDirectoryPicker({ mode: "readwrite" })
-        .then(function (handle) {
-          saveDirHandle(handle, function (err) {
-            if (err) { showToast("❌ Lỗi lưu thư mục"); return; }
-            folderNameEl.textContent = handle.name;
-            btnFolder.classList.add("has-folder");
-            // Also save name to chrome.storage for persistence
-            chrome.storage.local.set({ savedFolderName: handle.name });
-            showToast("📁 Đã chọn: " + handle.name);
-          });
-        })
-        .catch(function (err) {
-          if (err.name !== "AbortError") showToast("❌ Lỗi chọn thư mục");
-        });
-    });
-
     btnReload.addEventListener("click", function () {
       chrome.runtime.sendMessage({ action: "refreshSheet" }, function () {
         if (chrome.runtime.lastError) return;
@@ -320,28 +297,15 @@
     chrome.runtime.onMessage.addListener(function (message) {
       if (!message || !message.action) return;
       if (message.action === "statusUpdate" && message.state) updateStatusUI(message.state);
-      if (message.action === "saveFiles") {
-        getDirHandle(function (err, handle) {
-          if (err || !handle) { showToast("❌ Chưa chọn thư mục lưu"); return; }
-          handle.requestPermission({ mode: "readwrite" })
-            .then(function (perm) {
-              if (perm !== "granted") { showToast("❌ Không có quyền ghi"); return; }
-              saveFilesToDir(handle, message.folder || "", message.files || [], function (writeErr) {
-                if (writeErr) showToast("❌ Lỗi ghi: " + writeErr.message);
-                else showToast("✅ Đã lưu " + (message.files || []).length + " file");
-              });
-            })
-            .catch(function () { showToast("❌ Lỗi quyền thư mục"); });
-        });
-        return true;
-      }
       if (message.action === "jobComplete" && message.job) {
-        addLogEntry({ stt: message.job.row || "", status: "done", note: message.job.note || "Hoàn thành", time: new Date() });
+        addLogEntry({ stt: message.job.row || "", status: "done", note: (message.job.note || "Hoàn thành") + " (" + (message.job.segments || 0) + " đoạn)", time: new Date() });
         chrome.storage.local.set({ recentLog: logEntries });
+        showToast("✅ Xong dòng " + message.job.row);
       }
       if (message.action === "jobError") {
         addLogEntry({ stt: message.job ? message.job.row : "", status: "error", note: message.error || "Lỗi", time: new Date() });
         chrome.storage.local.set({ recentLog: logEntries });
+        showToast("❌ Lỗi: " + (message.error || "").substring(0, 50));
       }
       if (message.action === "segmentProgress") {
         showToast("📝 Đoạn " + message.current + "/" + message.total);

@@ -306,6 +306,23 @@ a:hover {
   flex-shrink: 0;
 }
 
+.panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.btn-convert-inline {
+  padding: 6px 18px !important;
+  font-size: 0.85rem !important;
+  border-radius: var(--radius-md) !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
 
 /* ============================================================
    TEXTAREA
