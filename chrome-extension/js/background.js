@@ -54,40 +54,82 @@ chrome.alarms.onAlarm.addListener(function (alarm) {
 
 // ── Message handler ───────────────────────────────────────
 chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
-  if (msg.command === 'startPolling') {
+  var cmd = msg.action || msg.command || '';
+
+  if (cmd === 'startPolling') {
     chrome.storage.local.set({ enabled: true });
     chrome.alarms.create(ALARM_NAME, { periodInMinutes: 0.5 });
     state.isPolling = true;
-    sendResponse({ ok: true, message: 'Polling started' });
+    sendResponse({ ok: true });
     return true;
   }
 
-  if (msg.command === 'stopPolling') {
+  if (cmd === 'stopPolling') {
     chrome.storage.local.set({ enabled: false });
     chrome.alarms.clear(ALARM_NAME);
     state.isPolling = false;
-    sendResponse({ ok: true, message: 'Polling stopped' });
+    sendResponse({ ok: true });
     return true;
   }
 
-  if (msg.command === 'getStatus') {
+  if (cmd === 'getStatus') {
     sendResponse({
       ok: true,
       state: {
         isPolling: state.isPolling,
         isProcessing: state.isProcessing,
-        currentJob: state.currentJob,
-        lastCheck: state.lastCheck,
-        processedCount: state.processedCount,
-        errorCount: state.errorCount
+        currentJob: state.currentJob ? (state.currentJob.note || 'Dòng ' + state.currentJob.row) : null,
+        lastCheckTime: state.lastCheck,
+        processed: state.processedCount,
+        errors: state.errorCount
       }
     });
     return true;
   }
 
-  if (msg.command === 'processJobs') {
+  if (cmd === 'refreshSheet' || cmd === 'processJobs') {
     pollSheet();
-    sendResponse({ ok: true, message: 'Manual poll triggered' });
+    sendResponse({ ok: true });
+    return true;
+  }
+
+  if (cmd === 'loadModels') {
+    chrome.storage.local.get(['apiKeys'], function (data) {
+      var keysRaw = data.apiKeys || '';
+      var keys = keysRaw.split('\n').map(function (k) { return k.trim(); }).filter(function (k) { return k.length > 0; });
+      if (keys.length === 0) {
+        sendResponse({ ok: false, error: 'Chưa có API Key' });
+        return;
+      }
+      var apiKey = keys[0];
+      var url = 'https://generativelanguage.googleapis.com/v1beta/models?key=' + apiKey;
+      fetch(url)
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          var models = [];
+          if (data && data.models) {
+            for (var i = 0; i < data.models.length; i++) {
+              var m = data.models[i];
+              var name = m.name || '';
+              // Only include TTS-capable models
+              if (name.indexOf('tts') !== -1 || name.indexOf('flash') !== -1) {
+                var id = name.replace('models/', '');
+                models.push(id);
+              }
+            }
+          }
+          sendResponse({ ok: true, models: models });
+        })
+        .catch(function (err) {
+          sendResponse({ ok: false, error: err.message });
+        });
+    });
+    return true;
+  }
+
+  if (cmd === 'settingsUpdated') {
+    // Settings were updated, nothing special to do
+    sendResponse({ ok: true });
     return true;
   }
 
