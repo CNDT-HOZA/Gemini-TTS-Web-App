@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=380">
+  <title>Gemini TTS</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 380px;
+      max-height: 580px;
+      overflow-y: auto;
+      background: #1a1b2e;
+      color: #e2e4f0;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    body::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    body::-webkit-scrollbar-track {
+      background: #1a1b2e;
+    }
+
+    body::-webkit-scrollbar-thumb {
+      background: #3b3d5e;
+      border-radius: 4px;
+    }
+
+    body::-webkit-scrollbar-thumb:hover {
+      background: #4e5078;
+    }
+
+    /* Header */
+    .header {
+      padding: 16px 18px 12px;
+      text-align: center;
+      border-bottom: 1px solid #2d2e4a;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 2px;
+    }
+
+    .header .subtitle {
+      font-size: 11px;
+      color: #8b8da8;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      font-weight: 500;
+    }
+
+    /* Sections */
+    .section {
+      padding: 12px 14px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #8b8da8;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
+    }
+
+    .card {
+      background: #242540;
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+    }
+
+    /* Status section */
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #6b7280;
+      flex-shrink: 0;
+      transition: background 0.3s ease;
+    }
+
+    .status-dot.active {
+      background: #22c55e;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+      50% { opacity: 0.8; box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+    }
+
+    .status-text {
+      font-size: 13px;
+      font-weight: 600;
+      color: #e2e4f0;
+    }
+
+    .status-meta {
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 2px;
+    }
+
+    .status-meta span {
+      margin-right: 10px;
+    }
+
+    .status-job {
+      font-size: 11px;
+      color: #a78bfa;
+      margin-top: 4px;
+      display: none;
+    }
+
+    .status-job.visible {
+      display: block;
+    }
+
+    .stats-row {
+      display: flex;
+      gap: 16px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #2d2e4a;
+    }
+
+    .stat-item {
+      font-size: 11px;
+      color: #8b8da8;
+    }
+
+    .stat-item strong {
+      color: #e2e4f0;
+      font-weight: 600;
+    }
+
+    /* Controls */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: system-ui, -apple-system, sans-serif;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: #e2e4f0;
+      background: #2d2e4a;
+    }
+
+    .btn:hover {
+      filter: brightness(1.15);
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-start {
+      background: #166534;
+      color: #bbf7d0;
+    }
+
+    .btn-start:hover {
+      background: #15803d;
+    }
+
+    .btn-stop {
+      background: #44162a;
+      color: #fda4af;
+    }
+
+    .btn-stop:hover {
+      background: #5c1a36;
+    }
+
+    .btn-folder {
+      grid-column: 1 / -1;
+      background: #242540;
+      border: 1px dashed #3b3d5e;
+      font-weight: 500;
+    }
+
+    .btn-folder .folder-name {
+      color: #8b8da8;
+      font-weight: 400;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .btn-folder.has-folder .folder-name {
+      color: #22c55e;
+    }
+
+    .btn-reload {
+      grid-column: 1 / -1;
+    }
+
+    /* Settings */
+    .settings-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+      padding: 2px 0;
+    }
+
+    .settings-toggle .chevron {
+      font-size: 10px;
+      color: #6b7280;
+      transition: transform 0.3s ease;
+    }
+
+    .settings-toggle .chevron.open {
+      transform: rotate(180deg);
+    }
+
+    .settings-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s ease, opacity 0.3s ease;
+      opacity: 0;
+    }
+
+    .settings-body.open {
+      max-height: 600px;
+      opacity: 1;
+    }
+
+    .form-group {
+      margin-bottom: 10px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 11px;
+      font-weight: 500;
+      color: #8b8da8;
+      margin-bottom: 4px;
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 8px 10px;
+      background: #1a1b2e;
+      border: 1px solid #2d2e4a;
+      border-radius: 8px;
+      color: #e2e4f0;
+      font-size: 12px;
+      font-family: system-ui, -apple-system, sans-serif;
+      transition: border-color 0.2s ease;
+      outline: none;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      border-color: #3b82f6;
+    }
+
+    .form-group textarea {
+      min-height: 60px;
+      resize: vertical;
+    }
+
+    .form-group select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 28px;
+    }
+
+    .model-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .model-row select {
+      flex: 1;
+    }
+
+    .model-row .btn-load-models {
+      flex-shrink: 0;
+      padding: 8px 10px;
+      font-size: 11px;
+      background: #2d2e4a;
+      border: 1px solid #3b3d5e;
+      border-radius: 8px;
+      color: #8b8da8;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .model-row .btn-load-models:hover {
+      background: #3b3d5e;
+      color: #e2e4f0;
+    }
+
+    .btn-save {
+      width: 100%;
+      padding: 10px;
+      background: #3b82f6;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: system-ui, -apple-system, sans-serif;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 4px;
+    }
+
+    .btn-save:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+    }
+
+    .btn-save:active {
+      transform: translateY(0);
+    }
+
+    /* Log section */
+    .log-list {
+      max-height: 160px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+
+    .log-list::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .log-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .log-list::-webkit-scrollbar-thumb {
+      background: #3b3d5e;
+      border-radius: 4px;
+    }
+
+    .log-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid #2d2e4a;
+      font-size: 11px;
+    }
+
+    .log-item:last-child {
+      border-bottom: none;
+    }
+
+    .log-stt {
+      color: #6b7280;
+      min-width: 24px;
+      text-align: center;
+      font-weight: 500;
+    }
+
+    .log-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      min-width: 52px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .badge-run {
+      background: #1e3a5f;
+      color: #60a5fa;
+    }
+
+    .badge-processing {
+      background: #422006;
+      color: #fbbf24;
+    }
+
+    .badge-done {
+      background: #14532d;
+      color: #4ade80;
+    }
+
+    .badge-error {
+      background: #450a0a;
+      color: #f87171;
+    }
+
+    .log-note {
+      flex: 1;
+      color: #a1a3b8;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .log-time {
+      color: #6b7280;
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+
+    .log-empty {
+      text-align: center;
+      color: #6b7280;
+      font-size: 11px;
+      padding: 12px 0;
+    }
+
+    /* Footer */
+    .footer {
+      padding: 10px 14px;
+      border-top: 1px solid #2d2e4a;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #6b7280;
+    }
+
+    .footer a {
+      color: #3b82f6;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .footer a:hover {
+      color: #60a5fa;
+      text-decoration: underline;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%) translateY(60px);
+      background: #242540;
+      border: 1px solid #3b3d5e;
+      color: #e2e4f0;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      opacity: 0;
+      transition: all 0.3s ease;
+      pointer-events: none;
+      z-index: 100;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <h1>🎙️ Gemini TTS</h1>
+    <div class="subtitle">Voice Studio</div>
+  </div>
+
+  <!-- Section 1: Trạng thái -->
+  <div class="section">
+    <div class="section-title">Trạng thái</div>
+    <div class="card">
+      <div class="status-row">
+        <div class="status-dot" id="statusDot"></div>
+        <span class="status-text" id="statusText">Đã dừng</span>
+      </div>
+      <div class="status-meta">
+        <span id="lastCheckTime">Lần quét cuối: --:--:--</span>
+      </div>
+      <div class="status-job" id="currentJob">
+        ⏳ Đang xử lý: <span id="currentJobInfo">--</span>
+      </div>
+      <div class="stats-row">
+        <div class="stat-item">Đã xử lý: <strong id="statProcessed">0</strong></div>
+        <div class="stat-item">Lỗi: <strong id="statErrors">0</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 2: Điều khiển -->
+  <div class="section">
+    <div class="section-title">Điều khiển</div>
+    <div class="controls-grid">
+      <button class="btn btn-start" id="btnStart">▶ Bắt đầu</button>
+      <button class="btn btn-stop" id="btnStop">⏹ Dừng</button>
+      <button class="btn btn-folder" id="btnFolder">
+        📁 Chọn thư mục — <span class="folder-name" id="folderName">Chưa chọn</span>
+      </button>
+      <button class="btn btn-reload" id="btnReload">🔄 Tải lại Sheet</button>
+    </div>
+  </div>
+
+  <!-- Section 3: Cài đặt -->
+  <div class="section">
+    <div class="card" style="padding-bottom: 6px;">
+      <div class="settings-toggle" id="settingsToggle">
+        <span class="section-title" style="margin-bottom: 0;">⚙️ Cài đặt</span>
+        <span class="chevron" id="settingsChevron">▼</span>
+      </div>
+      <div class="settings-body" id="settingsBody">
+        <div style="padding-top: 10px;">
+          <div class="form-group">
+            <label>API Keys (mỗi key một dòng)</label>
+            <textarea id="inputApiKeys" placeholder="AIzaSy...&#10;AIzaSy..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>URL Apps Script</label>
+            <input type="text" id="inputAppsScriptUrl" placeholder="https://script.google.com/macros/s/...">
+          </div>
+          <div class="form-group">
+            <label>Model</label>
+            <div class="model-row">
+              <select id="selectModel">
+                <option value="">-- Chọn model --</option>
+              </select>
+              <button class="btn-load-models" id="btnLoadModels" title="Tải danh sách model">⟳</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Giọng nói mặc định</label>
+            <select id="selectVoice">
+              <option value="Zephyr">Zephyr</option>
+              <option value="Puck">Puck</option>
+              <option value="Charon">Charon</option>
+              <option value="Kore" selected>Kore</option>
+              <option value="Fenrir">Fenrir</option>
+              <option value="Leda">Leda</option>
+              <option value="Orus">Orus</option>
+              <option value="Aoede">Aoede</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Độ trễ (ms)</label>
+            <input type="number" id="inputDelay" value="500" min="100" step="100">
+          </div>
+          <button class="btn-save" id="btnSave">💾 Lưu cài đặt</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 4: Nhật ký -->
+  <div class="section">
+    <div class="section-title">Nhật ký</div>
+    <div class="card">
+      <div class="log-list" id="logList">
+        <div class="log-empty" id="logEmpty">Chưa có nhật ký</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span>v1.0.0</span>
+    <a href="#" id="linkSheet" target="_blank">Mở Google Sheet ↗</a>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script src="../js/popup.js"></script>
+</body>
+</html>
