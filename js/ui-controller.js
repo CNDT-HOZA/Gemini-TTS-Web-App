@@ -259,8 +259,12 @@ window.UIController = {
       this._elements.progressBar.style.width = pct + '%';
     }
     if (this._elements.progressText) {
-      this._elements.progressText.textContent =
-        'Đang xử lý đoạn ' + current + '/' + total + '...';
+      if (current >= total && total > 0) {
+        this._elements.progressText.textContent = '✅ Hoàn thành ' + total + ' đoạn';
+      } else {
+        this._elements.progressText.textContent =
+          'Đang xử lý đoạn ' + current + '/' + total + '...';
+      }
     }
     if (this._elements.progressPercent) {
       this._elements.progressPercent.textContent = pct + '%';
