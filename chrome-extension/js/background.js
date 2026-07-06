@@ -22,6 +22,12 @@ chrome.runtime.onInstalled.addListener(function () {
   chrome.alarms.create(ALARM_NAME, { periodInMinutes: 0.5 });
   state.isPolling = true;
   chrome.storage.local.set({ enabled: true });
+
+  // Enable side panel to open on icon click
+  if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
+    chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  }
+
   console.log('[TTS] Extension installed – polling alarm created.');
 });
 
@@ -33,6 +39,10 @@ chrome.runtime.onStartup.addListener(function () {
       console.log('[TTS] Startup – polling alarm restored.');
     }
   });
+
+  if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
+    chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  }
 });
 
 // ── Alarm handler ─────────────────────────────────────────
