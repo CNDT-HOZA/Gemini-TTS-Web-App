@@ -258,6 +258,28 @@ window.App = {
         });
         btn.classList.add('active');
       });
+
+      // Voice tooltip on hover
+      var voiceTooltip = document.getElementById('voice-tooltip');
+      if (voiceTooltip) {
+        el.voiceGrid.addEventListener('mouseenter', function (e) {
+          var btn = e.target.closest('.voice-btn');
+          if (!btn) return;
+          self._showVoiceTooltip(btn, voiceTooltip);
+        }, true);
+
+        el.voiceGrid.addEventListener('mouseover', function (e) {
+          var btn = e.target.closest('.voice-btn');
+          if (!btn) return;
+          self._showVoiceTooltip(btn, voiceTooltip);
+        });
+
+        el.voiceGrid.addEventListener('mouseleave', function (e) {
+          var related = e.relatedTarget;
+          if (related && (related.closest('.voice-btn') || related.closest('.voice-tooltip'))) return;
+          voiceTooltip.classList.add('hidden');
+        }, true);
+      }
     }
 
     // Volume slider — live preview
@@ -894,6 +916,41 @@ window.App = {
   // ─── Theme ────────────────────────────────────────────────────────
 
   THEME_KEY: 'gemini_voice_studio_theme',
+
+  // ─── Voice Tooltip ─────────────────────────────────────────────────
+
+  /**
+   * Show voice tooltip with info from data attributes.
+   * @param {HTMLElement} btn - The voice button being hovered
+   * @param {HTMLElement} tooltip - The tooltip container
+   */
+  _showVoiceTooltip(btn, tooltip) {
+    var name = btn.getAttribute('data-voice') || '';
+    var gender = btn.getAttribute('data-gender') || '';
+    var style = btn.getAttribute('data-style') || '';
+    var use = btn.getAttribute('data-use') || '';
+
+    var genderIcon = gender === 'Nữ' ? '♀' : '♂';
+    var genderClass = gender === 'Nữ' ? 'female' : 'male';
+
+    var nameEl = tooltip.querySelector('.voice-tooltip-name');
+    var detailsEl = tooltip.querySelector('.voice-tooltip-details');
+
+    if (nameEl) {
+      nameEl.innerHTML = name +
+        ' <span class="voice-tooltip-tag ' + genderClass + '">' +
+        genderIcon + ' ' + gender + '</span>';
+    }
+    if (detailsEl) {
+      detailsEl.innerHTML =
+        '🎨 <strong>Phong cách:</strong> ' + style + '<br>' +
+        '📌 <strong>Phù hợp:</strong> ' + use;
+    }
+
+    tooltip.classList.remove('hidden');
+  },
+
+  // ─── Theme ────────────────────────────────────────────────────────
 
   /**
    * Initialize theme from localStorage or system preference.
